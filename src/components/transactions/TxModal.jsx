@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { DARK } from '../../constants/theme';
 import { CATS, CAT_COLORS, CURRENCIES } from '../../constants/categories';
+
+const memoizedCats = CATS; // Prevent array recreation
 
 const C = DARK;
 
@@ -12,22 +14,25 @@ export function TxModal({ tx, onSave, onClose }) {
   });
   const [errors, setErrors] = useState({});
 
-  const set = (k,v) => { setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:null})); };
+  const set = useCallback((k,v) => {
+    setForm(f=>({...f,[k]:v}));
+    setErrors(e=>({...e,[k]:null}));
+  }, []);
 
-  const validate = () => {
+  const validate = useCallback(() => {
     const e = {};
     if (!form.desc.trim()) e.desc = "Wpisz opis";
     if (!form.amount || isNaN(parseFloat(form.amount)) || parseFloat(form.amount) <= 0) e.amount = "Podaj kwotę > 0";
     return e;
-  };
+  }, [form.desc, form.amount]);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
     const sign = form.type === "expense" ? -1 : 1;
     onSave({ ...form, id: form.id || Date.now(), amount: sign * Math.abs(parseFloat(form.amount)) });
     onClose();
-  };
+  }, [form, validate, onSave, onClose]);
 
   const inp = (label, key, placeholder, type="text") => (
     <div style={{ marginBottom:12 }}>
@@ -109,15 +114,20 @@ export function TxModal({ tx, onSave, onClose }) {
         <div style={{ marginBottom:20 }}>
           <div style={{ fontFamily:"DM Mono,monospace", fontSize:10, color:C.muted, textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:8 }}>Kategoria</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-            {CATS.map(c=>(
-              <button key={c} onClick={()=>set("cat",c)} style={{
-                padding:"6px 13px", borderRadius:20,
-                border:`1px solid ${form.cat===c ? (CAT_COLORS[c]||C.accent) : C.border}`,
-                background: form.cat===c ? `${CAT_COLORS[c]||C.accent}20` : "transparent",
-                color: form.cat===c ? (CAT_COLORS[c]||C.accent) : C.textSub,
-                fontSize:11, fontFamily:"DM Mono,monospace", cursor:"pointer",
-              }}>{c}</button>
-            ))}
+            {memoizedCats.map(c=>{
+              const isSelected = form.cat === c;
+              const color = CAT_COLORS[c] || C.accent;
+              return (
+                <button key={c} onClick={()=>set("cat",c)} style={{
+                  padding:"6px 13px", borderRadius:20,
+                  border:`1px solid ${isSelected ? color : C.border}`,
+                  background: isSelected ? `${color}20` : "transparent",
+                  color: isSelected ? color : C.textSub,
+                  fontSize:11, fontFamily:"DM Mono,monospace", cursor:"pointer",
+                  transition:"all .12s"
+                }}>{c}</button>
+              );
+            })}
           </div>
         </div>
 
