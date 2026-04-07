@@ -60,6 +60,7 @@ export function useGoalsState() {
     goals,
     getGoalSaved,
     getGoalPct,
+    getMonthsLeft,
     getMonthlyNeeded,
     getEstimatedDone,
     saveGoal,
